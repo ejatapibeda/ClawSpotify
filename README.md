@@ -248,7 +248,22 @@ Spotify must be open and active on at least one device (desktop app, mobile app,
 pip install spotapi
 # or from source:
 pip install -e ./SpotAPI
+# or via pipx (installer will auto-detect it):
+pipx install git+https://github.com/ejatapibeda/SpotAPI.git
 ```
+
+> **pipx users:** The installer automatically finds `spotapi` inside your pipx venv and injects it into the wrapper's `PYTHONPATH`. Just re-run `bash install.sh` after installing via `pipx`.
+
+### `$'\r': command not found` / CRLF errors
+
+This happens when `install.sh` or `spotify.py` has Windows line endings (CRLF). Fix with:
+
+```bash
+sed -i 's/\r$//' ClawSpotify/install.sh
+bash ClawSpotify/install.sh
+```
+
+> To prevent this permanently, the repo includes a [`.gitattributes`](./.gitattributes) file that enforces LF line endings for `.sh` and `.py` files on checkout.
 
 ### `spotify-ctl: command not found`
 
