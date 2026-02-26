@@ -16,10 +16,14 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo "╔══════════════════════════════════════╗"
-echo "║   ClawSpotify installer  🎵          ║"
-echo "╚══════════════════════════════════════╝"
-echo ""
+# Convert script to UNIX line endings (fix Windows CRLF issues)
+if command -v dos2unix &>/dev/null; then
+    dos2unix "$SCRIPT_PATH" || true
+else
+    sed -i 's/\r$//' "$SCRIPT_PATH"
+fi
+
+# ...rest of script unchanged...
 
 # ── 1. Check Python 3 ─────────────────────────────────────────────────────────
 
@@ -50,17 +54,17 @@ echo -e "${GREEN}✓${NC} Found: spotapi (${SPOTAPI_VER})"
 
 # ── 3. Ensure script is executable ───────────────────────────────────────────
 
-chmod +x "${SCRIPT_PATH}"
+chmod +x "$SCRIPT_PATH"
 
 # ── 4. Create CLI wrapper ─────────────────────────────────────────────────────
 
-mkdir -p "${BIN_DIR}"
+mkdir -p "$BIN_DIR"
 
-cat > "${BIN_DIR}/${BIN_NAME}" << WRAPPER
+cat > "$BIN_DIR/$BIN_NAME" << WRAPPER
 #!/bin/bash
-exec python3 "${SCRIPT_PATH}" "\$@"
+exec python3 "$SCRIPT_PATH" "$@"
 WRAPPER
-chmod +x "${BIN_DIR}/${BIN_NAME}"
+chmod +x "$BIN_DIR/$BIN_NAME"
 
 echo -e "${GREEN}✓${NC} CLI installed: ${BIN_DIR}/${BIN_NAME}"
 
@@ -83,14 +87,14 @@ if [ -d "${HOME}/.openclaw" ]; then
     read -r -p "Link as OpenClaw workspace skill? [Y/n] " response
     response="${response:-Y}"
     if [[ "${response}" =~ ^[Yy]$ ]]; then
-        mkdir -p "${SKILL_DIR}"
-        LINK_TARGET="${SKILL_DIR}/spotify"
+        mkdir -p "$SKILL_DIR"
+        LINK_TARGET="$SKILL_DIR/spotify"
 
-        if [ -L "${LINK_TARGET}" ] || [ -d "${LINK_TARGET}" ]; then
-            rm -rf "${LINK_TARGET}"
+        if [ -L "$LINK_TARGET" ] || [ -d "$LINK_TARGET" ]; then
+            rm -rf "$LINK_TARGET"
         fi
 
-        ln -s "${SCRIPT_DIR}" "${LINK_TARGET}"
+        ln -s "$SCRIPT_DIR" "$LINK_TARGET"
         echo -e "${GREEN}✓${NC} Skill linked: ${LINK_TARGET} → ${SCRIPT_DIR}"
         echo ""
         echo "  Restart the daemon to pick up the new skill:"
@@ -122,7 +126,7 @@ echo ""
 
 # ── 8. Verify ─────────────────────────────────────────────────────────────────
 
-if command -v "${BIN_NAME}" &>/dev/null; then
+if command -v "$BIN_NAME" &>/dev/null; then
     echo -e "${GREEN}✓${NC} Ready! Try: ${BIN_NAME} status"
 else
     echo -e "${GREEN}✓${NC} Installed. After updating PATH, try: ${BIN_NAME} status"
