@@ -53,9 +53,9 @@ def _load_session(identifier: str):
     """Load a SpotifySession, with friendly error messages."""
     try:
         from spotapi.session import SpotifySession
-    except ImportError:
+    except ImportError as e:
         _die(
-            "spotapi is not installed.\n"
+            f"spotapi is not installed (or failed to import: {e}).\n"
             "  Install it with:  pip install spotapi\n"
             "  or from source:   pip install -e ./SpotAPI"
         )
@@ -74,8 +74,8 @@ def _get_player(login, require_device: bool = True):
     """Create a Player instance, with friendly error for no active device."""
     try:
         from spotapi import Player
-    except ImportError:
-        _die("spotapi is not installed.")
+    except ImportError as e:
+        _die(f"spotapi is not installed (or failed to import: {e}).")
     try:
         return Player(login)
     except ValueError as e:
@@ -92,8 +92,8 @@ def _get_status(login):
     """Create a PlayerStatus instance."""
     try:
         from spotapi import PlayerStatus
-    except ImportError:
-        _die("spotapi is not installed.")
+    except ImportError as e:
+        _die(f"spotapi is not installed (or failed to import: {e}).")
     return PlayerStatus(login)
 
 # ── Commands ──────────────────────────────────────────────────────────────────
@@ -162,8 +162,8 @@ def cmd_search(args):
     login = _load_session(args.id)
     try:
         from spotapi.public import Public
-    except ImportError:
-        _die("spotapi is not installed.")
+    except ImportError as e:
+        _die(f"spotapi is not installed (or failed to import: {e}).")
     print(f"Search results for: {query}\n")
     try:
         results = Public.song_search(query)
@@ -326,9 +326,9 @@ def cmd_setup(args):
         _die("Both --sp-dc and --sp-key are required.")
     try:
         from spotapi.session import SpotifySession
-    except ImportError:
+    except ImportError as e:
         _die(
-            "spotapi is not installed.\n"
+            f"spotapi is not installed (or failed to import: {e}).\n"
             "  Install it with:  pip install spotapi\n"
             "  or from source:   pip install -e ./SpotAPI"
         )
