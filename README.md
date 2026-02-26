@@ -11,7 +11,7 @@ Control Spotify entirely from the command line (or via your OpenClaw agent): pla
 | Requirement | Notes |
 |-------------|-------|
 | Python 3.10+ | `python3 --version` |
-| [SpotAPI](https://github.com/ejatapibeda/SpotAPI) | `pip install -e ./SpotAPI` |
+| [SpotAPI](https://github.com/ejatapibeda/SpotAPI) | `pip install -e ./SpotAPI` or `pip install git+https://github.com/ejatapibeda/SpotAPI.git` |
 | Active Spotify account | Free or Premium |
 | Spotify open on any device | Desktop, mobile, or web player |
 
@@ -311,3 +311,4 @@ ClawSpotify/
 ## License
 
 This skill is part of the AI-Project-EJA workspace. SpotAPI is a separate project — see [SpotAPI/LICENSE](https://github.com/ejatapibeda/SpotAPI) for its terms.
+
