@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 # -*- coding: utf-8 -*-
 """
 spotify-ctl — CLI tool for controlling Spotify playback via SpotAPI.
@@ -7,6 +7,7 @@ Usage: spotify-ctl <command> [options]
 
 Commands:
   status                    Show now playing info
+  search "<query>"          Search for tracks (shows top 5 results, does not play)
   play "<query>"            Search and play a track
   pause                     Pause playback
   resume                    Resume playback
@@ -27,7 +28,6 @@ import sys
 import os
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
 def _ms_to_mmss(ms_str: str | None) -> str:
     """Convert milliseconds string to mm:ss format."""
     if ms_str is None:
@@ -40,17 +40,14 @@ def _ms_to_mmss(ms_str: str | None) -> str:
     except (ValueError, TypeError):
         return "?:??"
 
-
 def _vol_16bit_to_pct(vol: int) -> int:
     """Convert 16-bit volume (0-65535) to percentage (0-100)."""
     return round(vol / 65535 * 100)
-
 
 def _die(msg: str, code: int = 1) -> None:
     """Print error and exit."""
     print(f"✗ Error: {msg}", file=sys.stderr)
     sys.exit(code)
-
 
 def _load_session(identifier: str):
     """Load a SpotifySession, with friendly error messages."""
@@ -62,7 +59,6 @@ def _load_session(identifier: str):
             "  Install it with:  pip install spotapi\n"
             "  or from source:   pip install -e ./SpotAPI"
         )
-
     try:
         return SpotifySession.load(identifier)
     except FileNotFoundError:
@@ -74,14 +70,12 @@ def _load_session(identifier: str):
     except KeyError as e:
         _die(str(e))
 
-
 def _get_player(login, require_device: bool = True):
     """Create a Player instance, with friendly error for no active device."""
     try:
         from spotapi import Player
     except ImportError:
         _die("spotapi is not installed.")
-
     try:
         return Player(login)
     except ValueError as e:
@@ -94,7 +88,6 @@ def _get_player(login, require_device: bool = True):
             )
         raise
 
-
 def _get_status(login):
     """Create a PlayerStatus instance."""
     try:
@@ -103,60 +96,41 @@ def _get_status(login):
         _die("spotapi is not installed.")
     return PlayerStatus(login)
 
-
 # ── Commands ──────────────────────────────────────────────────────────────────
-
 def cmd_status(args):
     login = _load_session(args.id)
     status = _get_status(login)
-
     try:
         state = status.state
     except Exception as e:
         _die(f"Could not get player state: {e}")
-
-    # Track info
     track = state.track
     if track is None or track.metadata is None:
-        print("▶  Nothing is currently playing.")
+        print("Nothing is currently playing.")
         return
-
     meta = track.metadata
     title       = meta.title or "Unknown Title"
     artist_uri  = meta.artist_uri or ""
     album       = meta.album_title or "Unknown Album"
-
-    # Artist name: Spotify stores it in the URI like "spotify:artist:<id>"
-    # The metadata doesn't give us the artist name string directly, so we
-    # fall back to extracting what we can from context metadata.
     ctx_meta = state.context_metadata
     artist_name = "Unknown Artist"
     if ctx_meta and ctx_meta.context_owner:
         artist_name = ctx_meta.context_owner
     elif artist_uri:
-        # Best-effort: show the URI id as a hint
         artist_name = artist_uri.split(":")[-1] if ":" in artist_uri else artist_uri
-
-    # Position / duration
     pos_str = _ms_to_mmss(state.position_as_of_timestamp)
     dur_str = _ms_to_mmss(state.duration)
-
-    # Playback state
     if state.is_paused:
         play_state = "Paused"
     elif state.is_playing:
         play_state = "Playing"
     else:
         play_state = "Stopped"
-
-    # Shuffle / repeat
     opts = state.options
     shuffle_on = opts.shuffling_context if opts else False
     repeat_on  = (opts.repeating_track or opts.repeating_context) if opts else False
     shuffle_str = "on" if shuffle_on else "off"
     repeat_str  = "on" if repeat_on else "off"
-
-    # Active device
     try:
         devices = status.device_ids
         active_id = devices.active_device_id
@@ -173,7 +147,6 @@ def cmd_status(args):
         device_name = "Unknown"
         device_type = ""
         volume_pct  = 0
-
     print()
     print(f"  Status  : {play_state}")
     print(f"  Title   : {title}")
@@ -184,14 +157,40 @@ def cmd_status(args):
     print(f"  Volume  : {volume_pct}%")
     print()
 
+def cmd_search(args):
+    query = args.query
+    login = _load_session(args.id)
+    try:
+        from spotapi.public import Public
+    except ImportError:
+        _die("spotapi is not installed.")
+    print(f"Search results for: {query}\n")
+    try:
+        results = Public.song_search(query)
+        first_chunk = next(results, None)
+        results.close()
+        if not first_chunk:
+            print("No results found.")
+            return
+        items = list(first_chunk)
+        if not items:
+            print("No results found.")
+            return
+        for idx, item in enumerate(items[:5]):
+            data = item["item"]["data"]
+            title = data.get("name", "?")
+            artists = ", ".join(a["name"] for a in data.get("artists", []))
+            album = data.get("album", {}).get("name", "?")
+            uri = data.get("uri", "?")
+            print(f"{idx+1}. {title} — {artists} [{album}]\n   URI: {uri}")
+    except Exception as e:
+        _die(f"Could not search: {e}")
 
 def cmd_play(args):
     query = args.query
     index = getattr(args, "index", 0) or 0
-
     login  = _load_session(args.id)
     player = _get_player(login)
-
     print(f'  Searching for "{query}"...')
     try:
         uri = player.play_search(query, index=index)
@@ -200,7 +199,6 @@ def cmd_play(args):
         _die(str(e))
     except Exception as e:
         _die(f"Could not play track: {e}")
-
 
 def cmd_pause(args):
     login  = _load_session(args.id)
@@ -211,7 +209,6 @@ def cmd_pause(args):
     except Exception as e:
         _die(f"Could not pause: {e}")
 
-
 def cmd_resume(args):
     login  = _load_session(args.id)
     player = _get_player(login)
@@ -220,7 +217,6 @@ def cmd_resume(args):
         print("  Resumed.")
     except Exception as e:
         _die(f"Could not resume: {e}")
-
 
 def cmd_skip(args):
     login  = _load_session(args.id)
@@ -231,7 +227,6 @@ def cmd_skip(args):
     except Exception as e:
         _die(f"Could not skip: {e}")
 
-
 def cmd_prev(args):
     login  = _load_session(args.id)
     player = _get_player(login)
@@ -240,7 +235,6 @@ def cmd_prev(args):
         print("  Went to previous track.")
     except Exception as e:
         _die(f"Could not go to previous track: {e}")
-
 
 def cmd_restart(args):
     login  = _load_session(args.id)
@@ -251,13 +245,10 @@ def cmd_restart(args):
     except Exception as e:
         _die(f"Could not restart track: {e}")
 
-
 def cmd_queue(args):
     query = args.query
     login  = _load_session(args.id)
     player = _get_player(login)
-
-    # Accept direct spotify:track: URIs or plain search queries
     if query.startswith("spotify:track:"):
         uri = query
         try:
@@ -266,40 +257,31 @@ def cmd_queue(args):
         except Exception as e:
             _die(f"Could not add to queue: {e}")
     else:
-        # Search for the track first, add first result
         from spotapi.public import Public
-        print(f'  Searching for "{query}"…')
+        print(f'  Searching for "{query}"...')
         try:
             results = Public.song_search(query)
             first_chunk = next(results, None)
             results.close()
-
             if not first_chunk:
                 _die(f"No search results found for: {query!r}")
-
             items = list(first_chunk)
             if not items:
                 _die(f"No search results found for: {query!r}")
-
             track_uri: str = items[0]["item"]["data"]["uri"]
             player.add_to_queue(track_uri)
-
-            # Try to get a display name
             try:
                 name = items[0]["item"]["data"]["name"]
             except (KeyError, TypeError):
                 name = track_uri
-
             print(f"  Added to queue: {name}")
         except Exception as e:
             _die(f"Could not add to queue: {e}")
-
 
 def cmd_volume(args):
     vol_pct = args.level
     if not (0 <= vol_pct <= 100):
         _die("Volume must be between 0 and 100.")
-
     login  = _load_session(args.id)
     player = _get_player(login)
     try:
@@ -308,12 +290,10 @@ def cmd_volume(args):
     except Exception as e:
         _die(f"Could not set volume: {e}")
 
-
 def cmd_shuffle(args):
     state_str = args.state.lower()
     if state_str not in ("on", "off"):
         _die("Shuffle state must be 'on' or 'off'.")
-
     value  = state_str == "on"
     login  = _load_session(args.id)
     player = _get_player(login)
@@ -324,12 +304,10 @@ def cmd_shuffle(args):
     except Exception as e:
         _die(f"Could not set shuffle: {e}")
 
-
 def cmd_repeat(args):
     state_str = args.state.lower()
     if state_str not in ("on", "off"):
         _die("Repeat state must be 'on' or 'off'.")
-
     value  = state_str == "on"
     login  = _load_session(args.id)
     player = _get_player(login)
@@ -340,15 +318,12 @@ def cmd_repeat(args):
     except Exception as e:
         _die(f"Could not set repeat: {e}")
 
-
 def cmd_setup(args):
     sp_dc  = args.sp_dc
     sp_key = args.sp_key
     ident  = args.id
-
     if not sp_dc or not sp_key:
         _die("Both --sp-dc and --sp-key are required.")
-
     try:
         from spotapi.session import SpotifySession
     except ImportError:
@@ -357,7 +332,6 @@ def cmd_setup(args):
             "  Install it with:  pip install spotapi\n"
             "  or from source:   pip install -e ./SpotAPI"
         )
-
     try:
         SpotifySession.setup(sp_dc, sp_key, identifier=ident)
         print(f"  Session '{ident}' saved to ~/.config/spotapi/session.json")
@@ -367,9 +341,7 @@ def cmd_setup(args):
     except Exception as e:
         _die(f"Could not save session: {e}")
 
-
 # ── Parser ────────────────────────────────────────────────────────────────────
-
 def _add_id(p: argparse.ArgumentParser) -> None:
     """Add --id flag to a subparser."""
     p.add_argument(
@@ -380,7 +352,6 @@ def _add_id(p: argparse.ArgumentParser) -> None:
         help='Session identifier (default: "default"). Use for multi-account.',
     )
 
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="spotify-ctl",
@@ -390,6 +361,7 @@ def build_parser() -> argparse.ArgumentParser:
 Examples:
   spotify-ctl status
   spotify-ctl status --id my_account
+  spotify-ctl search "Bohemian Rhapsody" --id my_account
   spotify-ctl play "Bohemian Rhapsody"
   spotify-ctl play "Bohemian Rhapsody" --index 1
   spotify-ctl pause
@@ -406,14 +378,15 @@ Examples:
   spotify-ctl setup --sp-dc "AQC..." --sp-key "07c9..." --id work
 """,
     )
-
     sub = parser.add_subparsers(dest="command", metavar="<command>")
     sub.required = True
-
     # status
     p_status = sub.add_parser("status", help="Show now playing info")
     _add_id(p_status)
-
+    # search
+    p_search = sub.add_parser("search", help='Search for tracks (shows top 5 results, does not play)')
+    p_search.add_argument("query", help="Search query")
+    _add_id(p_search)
     # play
     p_play = sub.add_parser("play", help='Search and play a track (e.g. play "Song Name")')
     p_play.add_argument("query", help="Search query")
@@ -425,85 +398,66 @@ Examples:
         help="Pick the Nth search result (0-indexed, default: 0)",
     )
     _add_id(p_play)
-
     # pause
     p_pause = sub.add_parser("pause", help="Pause playback")
     _add_id(p_pause)
-
     # resume
     p_resume = sub.add_parser("resume", help="Resume playback")
     _add_id(p_resume)
-
     # skip
     p_skip = sub.add_parser("skip", help="Skip to next track")
     _add_id(p_skip)
-
     # prev
     p_prev = sub.add_parser("prev", help="Go to previous track")
     _add_id(p_prev)
-
     # restart
     p_restart = sub.add_parser("restart", help="Restart current track from beginning")
     _add_id(p_restart)
-
     # queue
     p_queue = sub.add_parser("queue", help='Add a track to queue (search query or spotify:track: URI)')
     p_queue.add_argument("query", help="Search query or spotify:track: URI")
     _add_id(p_queue)
-
     # volume
     p_vol = sub.add_parser("volume", help="Set volume (0-100)")
     p_vol.add_argument("level", type=int, metavar="<0-100>", help="Volume level")
     _add_id(p_vol)
-
     # shuffle
     p_shuf = sub.add_parser("shuffle", help="Toggle shuffle (on|off)")
     p_shuf.add_argument("state", choices=["on", "off"], metavar="<on|off>")
     _add_id(p_shuf)
-
     # repeat
     p_rep = sub.add_parser("repeat", help="Toggle repeat (on|off)")
     p_rep.add_argument("state", choices=["on", "off"], metavar="<on|off>")
     _add_id(p_rep)
-
     # setup
     p_setup = sub.add_parser("setup", help="Save Spotify session credentials (first-time setup)")
     p_setup.add_argument("--sp-dc",  required=True, metavar="VALUE", help="sp_dc cookie value from browser")
     p_setup.add_argument("--sp-key", required=True, metavar="VALUE", help="sp_key cookie value from browser")
     _add_id(p_setup)
-
     return parser
-
-
-# ── Dispatch ──────────────────────────────────────────────────────────────────
-
-_COMMANDS = {
-    "status":  cmd_status,
-    "play":    cmd_play,
-    "pause":   cmd_pause,
-    "resume":  cmd_resume,
-    "skip":    cmd_skip,
-    "prev":    cmd_prev,
-    "restart": cmd_restart,
-    "queue":   cmd_queue,
-    "volume":  cmd_volume,
-    "shuffle": cmd_shuffle,
-    "repeat":  cmd_repeat,
-    "setup":   cmd_setup,
-}
-
 
 def main():
     parser = build_parser()
     args   = parser.parse_args()
-
+    _COMMANDS = {
+        "status":  cmd_status,
+        "search":  cmd_search,
+        "play":    cmd_play,
+        "pause":   cmd_pause,
+        "resume":  cmd_resume,
+        "skip":    cmd_skip,
+        "prev":    cmd_prev,
+        "restart": cmd_restart,
+        "queue":   cmd_queue,
+        "volume":  cmd_volume,
+        "shuffle": cmd_shuffle,
+        "repeat":  cmd_repeat,
+        "setup":   cmd_setup,
+    }
     handler = _COMMANDS.get(args.command)
     if handler is None:
         parser.print_help()
         sys.exit(1)
-
     handler(args)
-
-
 if __name__ == "__main__":
     main()
