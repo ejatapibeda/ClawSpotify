@@ -1,6 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
+# ── Self-fix: hapus CRLF dari script ini sendiri ─────────────────────────────
+if grep -qP '\r$' "${BASH_SOURCE[0]}" 2>/dev/null; then
+    sed -i 's/\r$//' "${BASH_SOURCE[0]}"
+    exec bash "${BASH_SOURCE[0]}" "$@"
+fi
+
 # ── ClawSpotify installer ─────────────────────────────────────────────────────
 # Creates a CLI wrapper (spotify-ctl) and optionally links as an OpenClaw skill.
 
@@ -16,17 +22,25 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# Convert this script and the Python script to UNIX line endings (fix Windows CRLF issues)
-_fix_crlf() {
-    if command -v dos2unix &>/dev/null; then
-        dos2unix "$1" 2>/dev/null || true
-    else
-        sed -i 's/\r$//' "$1"
+# ── 0. Fix line endings pada semua file proyek ────────────────────────────────
+
+fix_line_endings() {
+    local file="$1"
+    if [ -f "$file" ]; then
+        sed -i 's/\r$//' "$file"
     fi
 }
 
-_fix_crlf "${BASH_SOURCE[0]}"
-_fix_crlf "$SCRIPT_PATH"
+# Fix script Python utama
+fix_line_endings "$SCRIPT_PATH"
+
+# Fix wrapper lama kalau ada
+if [ -f "$BIN_DIR/$BIN_NAME" ]; then
+    fix_line_endings "$BIN_DIR/$BIN_NAME"
+fi
+
+# Fix semua file .py dan .sh di direktori proyek
+find "$SCRIPT_DIR" -type f \( -name "*.py" -o -name "*.sh" \) -exec sed -i 's/\r$//' {} +
 
 # ── 1. Check Python 3 ─────────────────────────────────────────────────────────
 
@@ -39,51 +53,54 @@ fi
 PYTHON_VER="$(python3 --version 2>&1)"
 echo -e "${GREEN}✓${NC} Found: ${PYTHON_VER}"
 
-# ── 2. Check spotapi ──────────────────────────────────────────────────────────
+# ── 2. Check / install spotapi ───────────────────────────────────────────────
 
-# Detect spotapi: try plain python3 first, then search pipx venvs
-SPOTAPI_PYTHONPATH=""
+SPOTAPI_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/SpotAPI"
 
-if python3 -c "import spotapi" &>/dev/null; then
-    : # already visible to system python3
-else
-    # Try to find spotapi inside a pipx venv
-    PIPX_HOME="${PIPX_HOME:-${HOME}/.local/pipx}"
-    PIPX_LOCAL_VENVS="${PIPX_LOCAL_VENVS:-${PIPX_HOME}/venvs}"
+_try_import_spotapi() {
+    python3 -c "import spotapi" 2>/dev/null
+}
 
-    # Look for spotapi package in any pipx venv's site-packages
-    FOUND_PATH=""
-    for venv_dir in "$PIPX_LOCAL_VENVS"/*/lib/python*/site-packages; do
-        if [ -d "${venv_dir}/spotapi" ]; then
-            FOUND_PATH="$venv_dir"
-            break
-        fi
-    done
+_import_error_spotapi() {
+    python3 -c "import spotapi" 2>&1 | head -5
+}
 
-    if [ -n "$FOUND_PATH" ]; then
-        SPOTAPI_PYTHONPATH="$FOUND_PATH"
-        if ! PYTHONPATH="$SPOTAPI_PYTHONPATH" python3 -c "import spotapi" &>/dev/null; then
-            echo -e "${RED}✗ Error: Found spotapi at ${FOUND_PATH} but could not import it.${NC}"
+if ! _try_import_spotapi; then
+    echo ""
+    echo -e "${YELLOW}⚠  spotapi is not importable (may be broken PyPI build for this arch).${NC}"
+    echo "   Attempting to install from local source: ${SPOTAPI_SRC}"
+    echo ""
+
+    if [ ! -f "${SPOTAPI_SRC}/setup.py" ]; then
+        echo -e "${RED}✗ Error: SpotAPI source not found at: ${SPOTAPI_SRC}${NC}"
+        echo "   Clone the repo alongside ClawSpotify, or install manually:"
+        echo -e "   ${CYAN}pip install spotapi${NC}"
+        exit 1
+    fi
+
+    # Uninstall broken PyPI build first, then install from source
+    python3 -m pip uninstall -y spotapi 2>/dev/null || true
+    if python3 -m pip install -e "${SPOTAPI_SRC}" --quiet; then
+        if _try_import_spotapi; then
+            echo -e "${GREEN}✓${NC} spotapi installed from local source."
+        else
+            echo -e "${RED}✗ Error: spotapi still fails to import after local install.${NC}"
+            echo "  Details:"
+            _import_error_spotapi | sed 's/^/    /'
+            echo ""
+            echo "  This is likely a missing native dependency (e.g. tls_client has no ARM build)."
+            echo "  Try: pip install tls-client --upgrade"
             exit 1
         fi
     else
-        echo ""
-        echo -e "${RED}✗ Error: spotapi is not installed.${NC}"
-        echo ""
-        echo "  Install it with one of:"
-        echo -e "    ${CYAN}pip install spotapi${NC}"
-        echo -e "    ${CYAN}pip install -e ./SpotAPI${NC}   (if cloned from source)"
-        echo -e "    ${CYAN}pipx install git+https://github.com/ejatapibeda/SpotAPI.git${NC}"
-        echo ""
+        echo -e "${RED}✗ Error: pip install from source failed.${NC}"
+        echo "  Try manually: pip install -e ${SPOTAPI_SRC}"
         exit 1
     fi
 fi
 
-SPOTAPI_VER="$(PYTHONPATH="${SPOTAPI_PYTHONPATH}" python3 -c "import spotapi; print(getattr(spotapi, '__version__', 'installed'))" 2>/dev/null || echo "installed")"
+SPOTAPI_VER="$(python3 -c "import spotapi; print(getattr(spotapi, '__version__', 'installed'))" 2>/dev/null || echo "installed")"
 echo -e "${GREEN}✓${NC} Found: spotapi (${SPOTAPI_VER})"
-if [ -n "$SPOTAPI_PYTHONPATH" ]; then
-    echo -e "  ${CYAN}(via pipx venv: ${SPOTAPI_PYTHONPATH})${NC}"
-fi
 
 # ── 3. Ensure script is executable ───────────────────────────────────────────
 
@@ -93,11 +110,8 @@ chmod +x "$SCRIPT_PATH"
 
 mkdir -p "$BIN_DIR"
 
-# Use printf to avoid heredoc CRLF issues when install.sh has Windows line endings
-printf '#!/bin/bash\nexport PYTHONPATH="%s${PYTHONPATH:+:${PYTHONPATH}}"\nexec python3 "%s" "$@"\n' \
-    "${SPOTAPI_PYTHONPATH}" \
-    "${SCRIPT_PATH}" \
-    > "$BIN_DIR/$BIN_NAME"
+# Tulis wrapper dengan printf supaya pasti LF, bukan CRLF
+printf '#!/bin/bash\nexec python3 "%s" "$@"\n' "$SCRIPT_PATH" > "$BIN_DIR/$BIN_NAME"
 chmod +x "$BIN_DIR/$BIN_NAME"
 
 echo -e "${GREEN}✓${NC} CLI installed: ${BIN_DIR}/${BIN_NAME}"
