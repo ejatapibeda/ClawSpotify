@@ -23,6 +23,15 @@ else
     sed -i 's/\r$//' "$SCRIPT_PATH"
 fi
 
+# Also fix the wrapper if it exists
+if [ -f "$BIN_DIR/$BIN_NAME" ]; then
+    if command -v dos2unix &>/dev/null; then
+        dos2unix "$BIN_DIR/$BIN_NAME" || true
+    else
+        sed -i 's/\r$//' "$BIN_DIR/$BIN_NAME"
+    fi
+fi
+
 # ...rest of script unchanged...
 
 # ── 1. Check Python 3 ─────────────────────────────────────────────────────────
@@ -66,6 +75,13 @@ exec python3 "$SCRIPT_PATH" "$@"
 WRAPPER
 chmod +x "$BIN_DIR/$BIN_NAME"
 
+# Convert wrapper to UNIX line endings
+if command -v dos2unix &>/dev/null; then
+    dos2unix "$BIN_DIR/$BIN_NAME" || true
+else
+    sed -i 's/\r$//' "$BIN_DIR/$BIN_NAME"
+fi
+
 echo -e "${GREEN}✓${NC} CLI installed: ${BIN_DIR}/${BIN_NAME}"
 
 # ── 5. PATH warning ───────────────────────────────────────────────────────────
@@ -89,11 +105,9 @@ if [ -d "${HOME}/.openclaw" ]; then
     if [[ "${response}" =~ ^[Yy]$ ]]; then
         mkdir -p "$SKILL_DIR"
         LINK_TARGET="$SKILL_DIR/spotify"
-
         if [ -L "$LINK_TARGET" ] || [ -d "$LINK_TARGET" ]; then
             rm -rf "$LINK_TARGET"
         fi
-
         ln -s "$SCRIPT_DIR" "$LINK_TARGET"
         echo -e "${GREEN}✓${NC} Skill linked: ${LINK_TARGET} → ${SCRIPT_DIR}"
         echo ""
