@@ -9,6 +9,8 @@ Commands:
   status                    Show now playing info
   search "<query>"          Search for tracks (shows top 5 results, does not play)
   play "<query>"            Search and play a track
+  search-playlist "<query>" Search for playlists (shows top 5 results, does not play)
+  play-playlist "<query>"   Search and play a playlist
   pause                     Pause playback
   resume                    Resume playback
   skip                      Skip to next track
@@ -64,7 +66,7 @@ def _load_session(identifier: str):
     except FileNotFoundError:
         _die(
             f"No session file found for identifier '{identifier}'.\n"
-            "  Run:  spotify-ctl setup --sp-dc \"<value>\" --sp-key \"<value>\"\n"
+            "  Run:  clawspotify setup --sp-dc \"<value>\" --sp-key \"<value>\"\n"
             "  (Get sp_dc / sp_key from browser DevTools → Application → Cookies → open.spotify.com)"
         )
     except KeyError as e:
@@ -74,17 +76,25 @@ def _get_player(login, require_device: bool = True):
     """Create a Player instance, with friendly error for no active device."""
     try:
         from spotapi import Player
+        from spotapi.exceptions import LoginError
     except ImportError as e:
         _die(f"spotapi is not installed (or failed to import: {e}).")
     try:
         return Player(login)
+    except LoginError as e:
+        _die(
+            "Spotify session expired or invalid (Status 401).\n"
+            "  Your sp_dc / sp_key cookies are no longer valid.\n"
+            "  1. Open https://open.spotify.com in your browser and log in.\n"
+            "  2. Press F12 → Application → Cookies → copy sp_dc and sp_key.\n"
+            "  3. Run: clawspotify setup --sp-dc \"<new_value>\" --sp-key \"<new_value>\""
+        )
     except ValueError as e:
         if require_device:
             _die(
                 "No active Spotify device found.\n"
                 "  Open Spotify on any device (PC, phone, web) and start playing\n"
-                "  something, then try again.\n"
-                f"  (Details: {e})"
+                "  something, then try again."
             )
         raise
 
@@ -92,9 +102,19 @@ def _get_status(login):
     """Create a PlayerStatus instance."""
     try:
         from spotapi import PlayerStatus
+        from spotapi.exceptions import LoginError
     except ImportError as e:
         _die(f"spotapi is not installed (or failed to import: {e}).")
-    return PlayerStatus(login)
+    try:
+        return PlayerStatus(login)
+    except LoginError as e:
+        _die(
+            "Spotify session expired or invalid (Status 401).\n"
+            "  Your sp_dc / sp_key cookies are no longer valid.\n"
+            "  1. Open https://open.spotify.com in your browser and log in.\n"
+            "  2. Press F12 → Application → Cookies → copy sp_dc and sp_key.\n"
+            "  3. Run: clawspotify setup --sp-dc \"<new_value>\" --sp-key \"<new_value>\""
+        )
 
 # ── Commands ──────────────────────────────────────────────────────────────────
 def cmd_status(args):
@@ -199,6 +219,48 @@ def cmd_play(args):
         _die(str(e))
     except Exception as e:
         _die(f"Could not play track: {e}")
+
+def cmd_search_playlist(args):
+    query = args.query
+    login = _load_session(args.id)
+    try:
+        from spotapi.public import Public
+    except ImportError as e:
+        _die(f"spotapi is not installed (or failed to import: {e}).")
+    print(f"Playlist search results for: {query}\n")
+    try:
+        results = Public.playlist_search(query)
+        first_chunk = next(results, None)
+        results.close()
+        if not first_chunk:
+            print("No results found.")
+            return
+        items = list(first_chunk)
+        if not items:
+            print("No results found.")
+            return
+        for idx, item in enumerate(items[:5]):
+            data = item["data"]
+            title = data.get("name", "?")
+            owner = data.get("ownerV2", {}).get("data", {}).get("name", "?")
+            uri = data.get("uri", "?")
+            print(f"{idx+1}. {title} — by {owner}\n   URI: {uri}")
+    except Exception as e:
+        _die(f"Could not search playlist: {e}")
+
+def cmd_play_playlist(args):
+    query = args.query
+    index = getattr(args, "index", 0) or 0
+    login  = _load_session(args.id)
+    player = _get_player(login)
+    print(f'  Searching for playlist "{query}"...')
+    try:
+        uri = player.play_playlist_search(query, index=index)
+        print(f"  Playing Playlist: {uri}")
+    except ValueError as e:
+        _die(str(e))
+    except Exception as e:
+        _die(f"Could not play playlist: {e}")
 
 def cmd_pause(args):
     login  = _load_session(args.id)
@@ -354,7 +416,7 @@ def _add_id(p: argparse.ArgumentParser) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="spotify-ctl",
+        prog="clawspotify",
         description="Control Spotify playback from the command line.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -398,6 +460,21 @@ Examples:
         help="Pick the Nth search result (0-indexed, default: 0)",
     )
     _add_id(p_play)
+    # search-playlist
+    p_search_pl = sub.add_parser("search-playlist", help='Search for playlists (shows top 5 results, does not play)')
+    p_search_pl.add_argument("query", help="Search query")
+    _add_id(p_search_pl)
+    # play-playlist
+    p_play_pl = sub.add_parser("play-playlist", help='Search and play a playlist (e.g. play-playlist "Lofi Girl")')
+    p_play_pl.add_argument("query", help="Search query")
+    p_play_pl.add_argument(
+        "--index", "-i",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Pick the Nth search result (0-indexed, default: 0)",
+    )
+    _add_id(p_play_pl)
     # pause
     p_pause = sub.add_parser("pause", help="Pause playback")
     _add_id(p_pause)
@@ -443,6 +520,8 @@ def main():
         "status":  cmd_status,
         "search":  cmd_search,
         "play":    cmd_play,
+        "search-playlist": cmd_search_playlist,
+        "play-playlist":   cmd_play_playlist,
         "pause":   cmd_pause,
         "resume":  cmd_resume,
         "skip":    cmd_skip,

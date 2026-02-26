@@ -1,5 +1,5 @@
 ---
-name: spotify
+name: clawspotify
 # Control Spotify playback — play, pause, skip, search, queue, volume, and view now-playing status from OpenClaw.
 description: "Control Spotify playback: play, pause, resume, skip, previous, restart, search, queue, set volume, shuffle, repeat, and view now-playing status."
 metadata:
@@ -9,15 +9,15 @@ metadata:
       bins: ["bash", "python3"]
 ---
 
-# spotify
+# clawspotify
 
 Control your Spotify playback directly from your OpenClaw agent. Search songs, control playback, manage volume, and view what's currently playing.
 
 ## Trigger
 
 Use when the user asks to:
-- Play, pause, resume, skip, previous, or restart a song
-- Search for a song or artist (without playing)
+- Play, pause, resume, skip, previous, or restart a song or playlist
+- Search for a song, artist, or playlist (without playing)
 - Add something to the queue
 - Check what's playing now
 - Change volume or shuffle/repeat settings
@@ -27,53 +27,55 @@ Use when the user asks to:
 
 ### Now playing status
 ```bash
-spotify status                   # full now-playing info + device
+clawspotify status                   # full now-playing info + device
 ```
 
 ### Search music (without playing)
 ```bash
-spotify search "Bohemian Rhapsody"        # search and show top 5 results
+clawspotify search "Bohemian Rhapsody"        # search tracks and show top 5 results
+clawspotify search-playlist "Workout"         # search playlists and show top 5 results
 ```
 
 ### Search and play
 ```bash
-spotify play "Bohemian Rhapsody"          # search and play first result
-spotify play "Bohemian Rhapsody" --index 2  # pick result #2 (0-indexed)
+clawspotify play "Bohemian Rhapsody"          # search tracks and play first result
+clawspotify play "Bohemian Rhapsody" --index 2  # pick result #2 (0-indexed)
+clawspotify play-playlist "Lofi Girl"         # search playlists and play first result
 ```
 
 ### Playback controls
 ```bash
-spotify pause
-spotify resume
-spotify skip                     # skip to next track
-spotify prev                     # go to previous track
-spotify restart                  # restart current track from beginning
+clawspotify pause
+clawspotify resume
+clawspotify skip                     # skip to next track
+clawspotify prev                     # go to previous track
+clawspotify restart                  # restart current track from beginning
 ```
 
 ### Queue
 ```bash
-spotify queue "Stairway to Heaven"        # search and add to queue
-spotify queue "spotify:track:3z8h0TU..."  # add by URI directly
+clawspotify queue "Stairway to Heaven"        # search and add to queue
+clawspotify queue "spotify:track:3z8h0TU..."  # add by URI directly
 ```
 
 ### Volume
 ```bash
-spotify volume 50                # set volume to 50%
-spotify volume 0                 # mute
-spotify volume 100               # max volume
+clawspotify volume 50                # set volume to 50%
+clawspotify volume 0                 # mute
+clawspotify volume 100               # max volume
 ```
 
 ### Shuffle / Repeat
 ```bash
-spotify shuffle on
-spotify shuffle off
-spotify repeat on
-spotify repeat off
+clawspotify shuffle on
+clawspotify shuffle off
+clawspotify repeat on
+clawspotify repeat off
 ```
 
 ### Session setup (first time only)
 ```bash
-spotify setup --sp-dc "AQC..." --sp-key "07c9..." --id "my_account"
+clawspotify setup --sp-dc "AQC..." --sp-key "07c9..." --id "my_account"
 ```
 
 ## Notes
@@ -81,5 +83,6 @@ spotify setup --sp-dc "AQC..." --sp-key "07c9..." --id "my_account"
 - Default session identifier is `"default"`. Use `--id` to manage multiple accounts.
 - `sp_dc` and `sp_key` cookies can be found in browser DevTools → Application → Cookies → open.spotify.com.
 - Commands target the currently active Spotify device (PC, phone, or web).
-- **Script location:** `{skill_folder}/spotify`
+- **Script location:** `{skill_folder}/clawspotify`
+- **Platform note:** If your human is on Windows, they'll need WSL, Git Bash, or Cygwin to run this skill since it uses a Bash wrapper.
 

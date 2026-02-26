@@ -1,8 +1,8 @@
 # ClawSpotify 🎵
 
-> OpenClaw skill — control Spotify playback from your AI agent or terminal.
+> An [OpenClaw](https://github.com/ejatapibeda) skill — control Spotify playback from your AI agent or terminal.
 
-Control Spotify entirely from the command line (or via your OpenClaw agent): play songs by name, skip tracks, manage volume, shuffle, repeat, and check what's playing — all without touching the Spotify app.
+Control Spotify entirely from the command line (or via your OpenClaw agent): play songs by name, skip tracks, manage volume, shuffle, repeat, search playlists, and check what's playing — all without touching the Spotify app.
 
 ---
 
@@ -11,9 +11,11 @@ Control Spotify entirely from the command line (or via your OpenClaw agent): pla
 | Requirement | Notes |
 |-------------|-------|
 | Python 3.10+ | `python3 --version` |
-| [spotapi](https://github.com/Usiein/SpotAPI) | `pip install spotapi` or `pip install -e ./SpotAPI` |
+| [SpotAPI](https://github.com/ejatapibeda/SpotAPI) | `pip install -e ./SpotAPI` |
 | Active Spotify account | Free or Premium |
 | Spotify open on any device | Desktop, mobile, or web player |
+
+> **Windows users:** Running the `clawspotify` bash script natively on Windows requires WSL, Git Bash, or Cygwin. Alternatively, you can run `python scripts/spotify.py` directly.
 
 ---
 
@@ -21,23 +23,28 @@ Control Spotify entirely from the command line (or via your OpenClaw agent): pla
 
 ### Via ClawHub
 ```bash
-clawhub install spotify
+clawhub install clawspotify
 ```
 
 ### Manual
 ```bash
 git clone https://github.com/ejatapibeda/ClawSpotify.git
 cd ClawSpotify
-chmod +x spotify
-# Add to PATH or symlink
-ln -s $(pwd)/spotify /usr/local/bin/spotify
+
+# Install SpotAPI dependency
+git clone https://github.com/ejatapibeda/SpotAPI.git
+pip install -e ./SpotAPI
+
+# Make wrapper executable and add to PATH
+chmod +x clawspotify
+ln -s $(pwd)/clawspotify ~/.local/bin/clawspotify
 ```
 
 ---
 
 ## First-time Setup — Getting `sp_dc` and `sp_key`
 
-`spotify` authenticates using two session cookies from your browser. You only need to do this **once per account**.
+`clawspotify` authenticates using two session cookies from your browser. You only need to do this **once per account**.
 
 ### Step-by-step
 
@@ -50,7 +57,7 @@ ln -s $(pwd)/spotify /usr/local/bin/spotify
 ### Save your session
 
 ```bash
-spotify setup --sp-dc "AQCqbfRJ..." --sp-key "07c956c0..."
+clawspotify setup --sp-dc "AQCqbfRJ..." --sp-key "07c956c0..."
 ```
 
 This saves credentials to `~/.config/spotapi/session.json`. The session is reused automatically — no login needed on subsequent runs.
@@ -59,11 +66,11 @@ This saves credentials to `~/.config/spotapi/session.json`. The session is reuse
 
 ```bash
 # Save a second account with a custom identifier
-spotify setup --sp-dc "..." --sp-key "..." --id "work"
+clawspotify setup --sp-dc "..." --sp-key "..." --id "work"
 
 # Use it with any command via --id
-spotify status --id "work"
-spotify play "Lo-fi beats" --id "work"
+clawspotify status --id "work"
+clawspotify play "Lo-fi beats" --id "work"
 ```
 
 ---
@@ -75,46 +82,79 @@ All commands accept an optional `--id <identifier>` flag (default: `"default"`).
 ### `status` — Now Playing
 
 ```bash
-spotify status
+clawspotify status
 ```
 
 **Example output:**
 ```
-  ▶  Playing
+=== NOW PLAYING ===
+Title  : Bohemian Rhapsody
+Album  : A Night at the Opera
 
-  Title   : Bohemian Rhapsody
-  Album   : A Night at the Opera
-  Position: 2:14 / 5:55
+=== PLAYER STATE ===
+Is Playing : True
+Is Paused  : False
+Position   : 134313 ms / 354947 ms
 
-  Device  : Reza's MacBook (Computer)
-  Volume  : 72%
-  Shuffle : off   Repeat: off
+=== ACTIVE DEVICE ===
+Active Device ID: c380db0a...
+Device Name : EJA
+Device Type : COMPUTER
+Volume      : 72%
 ```
 
 ---
 
-### `play` — Search and Play
+### `search` — Search Tracks
 
 ```bash
-spotify play "<query>"
-spotify play "<query>" --index <N>   # pick the Nth result (0-indexed)
+clawspotify search "<query>"
+```
+
+Shows top 5 results without playing anything.
+
+---
+
+### `play` — Search and Play Tracks
+
+```bash
+clawspotify play "<query>"
+clawspotify play "<query>" --index <N>   # pick the Nth result (0-indexed)
 ```
 
 ```bash
-spotify play "Bohemian Rhapsody"
-spotify play "Taylor Swift Anti-Hero" --index 0
-spotify play "Bach cello suite" --index 2
+clawspotify play "Bohemian Rhapsody"
+clawspotify play "Taylor Swift Anti-Hero" --index 0
+clawspotify play "Bach cello suite" --index 2
 ```
 
-Searches Spotify and immediately plays the first matching track (or the one at `--index`).
+---
+
+### `search-playlist` / `play-playlist` — Playlist Support
+
+```bash
+clawspotify search-playlist "Lofi beats"       # search playlists, show top 5
+clawspotify play-playlist "Lofi beats"         # search and play first result
+clawspotify play-playlist "Workout" --index 1  # play the 2nd playlist result
+```
+
+**Example search-playlist output:**
+```
+=== PLAYLIST SEARCH: Lofi beats ===
+1. Lofi Girl - beats to relax/study to — by Lofi Girl
+   URI: spotify:playlist:0vvXsWCC9xrXsKd4FyS8kM
+2. Lofi Study 2026 — by Lofi Girl
+   URI: spotify:playlist:6zCID88oNjNv9zx6puDHKj
+...
+```
 
 ---
 
 ### `pause` / `resume` — Playback Control
 
 ```bash
-spotify pause
-spotify resume
+clawspotify pause
+clawspotify resume
 ```
 
 ---
@@ -122,8 +162,8 @@ spotify resume
 ### `skip` / `prev` — Track Navigation
 
 ```bash
-spotify skip      # next track
-spotify prev      # previous track
+clawspotify skip      # next track
+clawspotify prev      # previous track
 ```
 
 ---
@@ -131,7 +171,7 @@ spotify prev      # previous track
 ### `restart` — Restart Current Track
 
 ```bash
-spotify restart   # seek to 0:00
+clawspotify restart   # seek to 0:00
 ```
 
 ---
@@ -140,10 +180,10 @@ spotify restart   # seek to 0:00
 
 ```bash
 # Search and add first result
-spotify queue "Stairway to Heaven"
+clawspotify queue "Stairway to Heaven"
 
 # Add directly by Spotify URI
-spotify queue "spotify:track:5CQ30WqJwcep0pYcV4AMNc"
+clawspotify queue "spotify:track:5CQ30WqJwcep0pYcV4AMNc"
 ```
 
 ---
@@ -151,27 +191,20 @@ spotify queue "spotify:track:5CQ30WqJwcep0pYcV4AMNc"
 ### `volume` — Set Volume
 
 ```bash
-spotify volume 50    # 50%
-spotify volume 0     # mute
-spotify volume 100   # max
+clawspotify volume 50    # 50%
+clawspotify volume 0     # mute
+clawspotify volume 100   # max
 ```
 
 ---
 
-### `shuffle` — Toggle Shuffle
+### `shuffle` / `repeat` — Toggle Modes
 
 ```bash
-spotify shuffle on
-spotify shuffle off
-```
-
----
-
-### `repeat` — Toggle Repeat
-
-```bash
-spotify repeat on
-spotify repeat off
+clawspotify shuffle on
+clawspotify shuffle off
+clawspotify repeat on
+clawspotify repeat off
 ```
 
 ---
@@ -179,49 +212,34 @@ spotify repeat off
 ### `setup` — Save Session
 
 ```bash
-spotify setup --sp-dc "<value>" --sp-key "<value>"
-spotify setup --sp-dc "<value>" --sp-key "<value>" --id "my_account"
-```
-
----
-
-## Session File
-
-Sessions are stored at:
-
-```
-~/.config/spotapi/session.json
-```
-
-Multiple accounts are supported — each identified by a label (e.g. `"default"`, `"work"`, `"personal"`).
-
-To list sessions manually, inspect the JSON:
-
-```bash
-cat ~/.config/spotapi/session.json
+clawspotify setup --sp-dc "<value>" --sp-key "<value>"
+clawspotify setup --sp-dc "<value>" --sp-key "<value>" --id "my_account"
 ```
 
 ---
 
 ## Using as an OpenClaw Skill
 
-After manual install or cloning into `~/.openclaw/workspace/skills/spotify`, the skill is ready.
+After manual install or cloning into `~/.openclaw/workspace/skills/clawspotify`, the skill is ready to use.
 
-OpenClaw reads [`SKILL.md`](./SKILL.md) to understand when and how to invoke `spotify`. The agent will automatically call the right command based on user intent — no extra configuration needed.
+OpenClaw reads [`SKILL.md`](./SKILL.md) to understand when and how to invoke `clawspotify`. The agent will automatically call the right command based on user intent.
 
 **Example agent interactions:**
 
 > "Play something by Radiohead"
-> → `spotify play "Radiohead"`
+> → `clawspotify play "Radiohead"`
+
+> "Search for lofi playlists"
+> → `clawspotify search-playlist "lofi"`
+
+> "Play the lofi girl playlist"
+> → `clawspotify play-playlist "Lofi Girl"`
 
 > "Turn the volume down to 30"
-> → `spotify volume 30`
+> → `clawspotify volume 30`
 
 > "What's playing right now?"
-> → `spotify status`
-
-> "Add Stairway to Heaven to the queue"
-> → `spotify queue "Stairway to Heaven"`
+> → `clawspotify status`
 
 ---
 
@@ -231,7 +249,7 @@ OpenClaw reads [`SKILL.md`](./SKILL.md) to understand when and how to invoke `sp
 
 Run setup first:
 ```bash
-spotify setup --sp-dc "..." --sp-key "..."
+clawspotify setup --sp-dc "..." --sp-key "..."
 ```
 
 ### `✗ Error: No active Spotify device found`
@@ -241,26 +259,20 @@ Spotify must be open and active on at least one device (desktop app, mobile app,
 ### `✗ Error: spotapi is not installed`
 
 ```bash
-pip install spotapi
-# or from source:
+# From source (recommended):
+git clone https://github.com/ejatapibeda/SpotAPI.git
 pip install -e ./SpotAPI
-# or via pipx (installer will auto-detect it):
-pipx install git+https://github.com/ejatapibeda/SpotAPI.git
 ```
-
-> **pipx users:** The installer automatically finds `spotapi` inside your pipx venv and injects it into the wrapper's `PYTHONPATH`. Just re-run `bash install.sh` after installing via `pipx`.
 
 ### `$'\r': command not found` / CRLF errors
 
-This happens when `spotify` or `spotify.py` has Windows line endings (CRLF). Fix with:
-
 ```bash
-sed -i 's/\r$//' ClawSpotify/spotify
+sed -i 's/\r$//' ClawSpotify/clawspotify
 ```
 
-> To prevent this permanently, the repo includes a [`.gitattributes`](./.gitattributes) file that enforces LF line endings for `.sh` and `.py` files on checkout.
+> To prevent this permanently, the repo includes a [`.gitattributes`](./.gitattributes) file that enforces LF line endings on checkout.
 
-### `spotify: command not found`
+### `clawspotify: command not found`
 
 Add `~/.local/bin` to your PATH:
 ```bash
@@ -272,7 +284,7 @@ source ~/.bashrc
 
 Spotify session cookies expire periodically. Re-run setup with fresh cookies:
 ```bash
-spotify setup --sp-dc "new_value" --sp-key "new_value"
+clawspotify setup --sp-dc "new_value" --sp-key "new_value"
 ```
 
 ---
@@ -283,13 +295,19 @@ spotify setup --sp-dc "new_value" --sp-key "new_value"
 ClawSpotify/
 ├── SKILL.md              # OpenClaw skill definition
 ├── README.md             # This file
-├── spotify               # CLI wrapper script
+├── clawspotify           # CLI wrapper script (bash)
 └── scripts/
-    └── spotify.py        # CLI implementation
+    └── spotify.py        # CLI implementation (Python)
 ```
+
+---
+
+## Dependencies
+
+- [SpotAPI](https://github.com/ejatapibeda/SpotAPI) — Unofficial Spotify API library (no official API key needed)
 
 ---
 
 ## License
 
-This skill is part of the AI-Project-EJA workspace. SpotAPI is a separate project — see [`SpotAPI/LICENSE`](../SpotAPI/LICENSE) for its terms.
+This skill is part of the AI-Project-EJA workspace. SpotAPI is a separate project — see [SpotAPI/LICENSE](https://github.com/ejatapibeda/SpotAPI) for its terms.
