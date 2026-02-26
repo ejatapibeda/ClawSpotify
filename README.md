@@ -1,6 +1,6 @@
 # ClawSpotify 🎵
 
-> An [OpenClaw](https://github.com/ejatapibeda) skill — control Spotify playback from your AI agent or terminal.
+> An [OpenClaw](https://github.com/ejatapibeda/OpenClaw) skill — control Spotify playback from your AI agent or terminal.
 
 Control Spotify entirely from the command line (or via your OpenClaw agent): play songs by name, skip tracks, manage volume, shuffle, repeat, search playlists, and check what's playing — all without touching the Spotify app.
 
@@ -11,7 +11,7 @@ Control Spotify entirely from the command line (or via your OpenClaw agent): pla
 | Requirement | Notes |
 |-------------|-------|
 | Python 3.10+ | `python3 --version` |
-| [SpotAPI](https://github.com/ejatapibeda/SpotAPI) | `pip install -e ./SpotAPI` |
+| [SpotAPI](https://github.com/ejatapibeda/SpotAPI) | Install from fork — see below |
 | Active Spotify account | Free or Premium |
 | Spotify open on any device | Desktop, mobile, or web player |
 
@@ -32,11 +32,13 @@ git clone https://github.com/ejatapibeda/ClawSpotify.git
 cd ClawSpotify
 
 # Install SpotAPI dependency
+# ⚠️ IMPORTANT: Install from the fork below — do NOT use `pip install spotapi`
 git clone https://github.com/ejatapibeda/SpotAPI.git
 pip install -e ./SpotAPI
 
-# Install clawspotify command
-bash install.sh
+or
+
+pip install git+https://github.com/ejatapibeda/SpotAPI.git
 ```
 
 ---
@@ -258,7 +260,8 @@ Spotify must be open and active on at least one device (desktop app, mobile app,
 ### `✗ Error: spotapi is not installed`
 
 ```bash
-# From source (recommended):
+# ⚠️ Do NOT run `pip install spotapi` — that is a different, unrelated package.
+# Install from the fork instead:
 git clone https://github.com/ejatapibeda/SpotAPI.git
 pip install -e ./SpotAPI
 ```
@@ -303,7 +306,7 @@ ClawSpotify/
 
 ## Dependencies
 
-- [SpotAPI](https://github.com/ejatapibeda/SpotAPI) — Unofficial Spotify API library (no official API key needed)
+- [SpotAPI](https://github.com/ejatapibeda/SpotAPI) — Unofficial Spotify API library (no official API key needed). **Must be installed from this fork** via `pip install -e ./SpotAPI`, not from PyPI.
 
 ---
 
