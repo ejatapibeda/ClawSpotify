@@ -83,6 +83,6 @@ clawspotify setup --sp-dc "AQC..." --sp-key "07c9..." --id "my_account"
 - Default session identifier is `"default"`. Use `--id` to manage multiple accounts.
 - `sp_dc` and `sp_key` cookies can be found in browser DevTools → Application → Cookies → open.spotify.com.
 - Commands target the currently active Spotify device (PC, phone, or web).
-- **Script location:** `{skill_folder}/clawspotify`
+- **Script location:** `{skill_folder}/clawspotify.sh`
 - **Platform note:** If your human is on Windows, they'll need WSL, Git Bash, or Cygwin to run this skill since it uses a Bash wrapper.
 

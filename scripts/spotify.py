@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-spotify-ctl — CLI tool for controlling Spotify playback via SpotAPI.
+clawspotify — CLI tool for controlling Spotify playback via SpotAPI.
 
-Usage: spotify-ctl <command> [options]
+Usage: clawspotify <command> [options]
 
 Commands:
   status                    Show now playing info
@@ -89,12 +89,12 @@ def _get_player(login, require_device: bool = True):
             "  2. Press F12 → Application → Cookies → copy sp_dc and sp_key.\n"
             "  3. Run: clawspotify setup --sp-dc \"<new_value>\" --sp-key \"<new_value>\""
         )
-    except ValueError as e:
+    except (ValueError, TypeError) as e:
         if require_device:
             _die(
                 "No active Spotify device found.\n"
                 "  Open Spotify on any device (PC, phone, web) and start playing\n"
-                "  something, then try again."
+                "  something first, then try again."
             )
         raise
 
@@ -421,23 +421,23 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  spotify-ctl status
-  spotify-ctl status --id my_account
-  spotify-ctl search "Bohemian Rhapsody" --id my_account
-  spotify-ctl play "Bohemian Rhapsody"
-  spotify-ctl play "Bohemian Rhapsody" --index 1
-  spotify-ctl pause
-  spotify-ctl resume
-  spotify-ctl skip
-  spotify-ctl prev
-  spotify-ctl restart
-  spotify-ctl queue "Stairway to Heaven"
-  spotify-ctl queue "spotify:track:5CQ30WqJwcep0pYcV4AMNc"
-  spotify-ctl volume 75
-  spotify-ctl shuffle on
-  spotify-ctl repeat off
-  spotify-ctl setup --sp-dc "AQC..." --sp-key "07c9..."
-  spotify-ctl setup --sp-dc "AQC..." --sp-key "07c9..." --id work
+  clawspotify status
+  clawspotify status --id my_account
+  clawspotify search "Bohemian Rhapsody" --id my_account
+  clawspotify play "Bohemian Rhapsody"
+  clawspotify play "Bohemian Rhapsody" --index 1
+  clawspotify pause
+  clawspotify resume
+  clawspotify skip
+  clawspotify prev
+  clawspotify restart
+  clawspotify queue "Stairway to Heaven"
+  clawspotify queue "spotify:track:5CQ30WqJwcep0pYcV4AMNc"
+  clawspotify volume 75
+  clawspotify shuffle on
+  clawspotify repeat off
+  clawspotify setup --sp-dc "AQC..." --sp-key "07c9..."
+  clawspotify setup --sp-dc "AQC..." --sp-key "07c9..." --id work
 """,
     )
     sub = parser.add_subparsers(dest="command", metavar="<command>")
