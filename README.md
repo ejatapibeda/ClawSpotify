@@ -1,6 +1,6 @@
 # ClawSpotify 🎵
 
-> An [OpenClaw]([https://github.com/ejatapibeda/OpenClaw](https://github.com/openclaw/openclaw)) skill — control Spotify playback from your AI agent or terminal.
+> An [OpenClaw](https://github.com/openclaw/openclaw) skill — control Spotify playback from your AI agent or terminal.
 
 Control Spotify entirely from the command line (or via your OpenClaw agent): play songs by name, skip tracks, manage volume, shuffle, repeat, search playlists, and check what's playing — all without touching the Spotify app.
 
@@ -315,4 +315,5 @@ ClawSpotify/
 ## License
 
 This skill is part of the AI-Project-EJA workspace. SpotAPI is a separate project — see [SpotAPI/LICENSE](https://github.com/ejatapibeda/SpotAPI) for its terms.
+
 
