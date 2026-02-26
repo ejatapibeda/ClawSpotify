@@ -34,12 +34,12 @@ cd ClawSpotify
 # Install SpotAPI dependency
 git clone https://github.com/ejatapibeda/SpotAPI.git
 pip install -e ./SpotAPI
-
 # alternative
 pip install git+https://github.com/ejatapibeda/SpotAPI.git
 
-# Install clawspotify command
-bash install.sh
+# Make wrapper executable and add to PATH
+chmod +x clawspotify.sh
+ln -s $(pwd)/clawspotify.sh ~/.local/bin/clawspotify
 ```
 
 ---
